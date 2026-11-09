@@ -1,0 +1,1201 @@
+
+<!DOCTYPE html>
+<!-- Centipede classroom game. AI-generated with Claude (Anthropic); review before use. Setup: see README.md -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Centipede game</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2; --surface: #fcfcfb; --surface-2: #efeee9; --line: #dddbd4;
+  --text: #0b0b0b; --text-2: #52514e; --muted: #7a7974;
+  --accent: #2a78d6; --accent-ink: #ffffff;
+  --series-1: #2a78d6; --series-2: #eb6834;
+  --take: #b8321f; --pass: #1f6f45; --warn-bg: #fff4d6; --warn-ink: #6b4a00;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #242422; --line: #3a3936;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #9a998f;
+    --accent: #3987e5; --series-1: #3987e5; --series-2: #d95926;
+    --take: #e0654f; --pass: #45b07a; --warn-bg: #3a3014; --warn-ink: #f2d58a;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.top { display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.brand { font-weight: 650; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.lang button { border: 0; background: transparent; color: var(--text-2); padding: 4px 10px; font: inherit; font-size: 14px; cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+main { max-width: 560px; margin: 0 auto; padding: 16px; }
+main.wide { max-width: 1180px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+h1 { font-size: 22px; margin: 0 0 8px; } h2 { font-size: 18px; margin: 0 0 10px; } h3 { font-size: 15px; margin: 0 0 6px; color: var(--text-2); }
+p { margin: 0 0 10px; } .muted { color: var(--muted); font-size: 14px; } .small { font-size: 13px; }
+label { display: block; font-size: 14px; color: var(--text-2); margin: 10px 0 4px; }
+input, select { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+input.code { font-size: 28px; letter-spacing: 6px; text-align: center; text-transform: uppercase; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 600;
+  padding: 11px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); cursor: pointer; text-decoration: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--take); }
+.btn.block { width: 100%; margin-top: 12px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.err { background: var(--warn-bg); color: var(--warn-ink); padding: 10px 12px; border-radius: 10px; margin: 10px 0; font-size: 14px; }
+#banner { position: fixed; left: 0; right: 0; bottom: 0; background: var(--warn-bg); color: var(--warn-ink); padding: 10px 16px; text-align: center; font-size: 14px; }
+.big-code { font-size: 54px; font-weight: 700; letter-spacing: 8px; text-align: center; margin: 4px 0; font-variant-numeric: tabular-nums; }
+.choice { display: block; width: 100%; text-align: left; margin-top: 10px; padding: 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+.choice strong { display: block; margin-bottom: 2px; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--surface-2); font-size: 13px; color: var(--text-2); }
+/* game */
+.status { font-size: 15px; color: var(--text-2); display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 10px; }
+.decide { display: grid; gap: 10px; margin-top: 12px; }
+.decide button { padding: 16px; border-radius: var(--radius); border: 2px solid; background: var(--surface); font: inherit; text-align: left; cursor: pointer; color: var(--text); }
+.decide button strong { display: block; font-size: 22px; letter-spacing: 1px; }
+.decide .t { border-color: var(--take); } .decide .t strong { color: var(--take); }
+.decide .p { border-color: var(--pass); } .decide .p strong { color: var(--pass); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; font-size: 14px; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--text-2); font-weight: 600; }
+tr.now td { background: var(--surface-2); font-weight: 650; }
+td .sub { font-size: 11px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+.hidden { display: none !important; }
+.about { border-left: 3px solid var(--accent); padding-left: 12px; margin: 10px 0; }
+.card.about { border-left: 4px solid var(--accent); }
+.about p { margin: 0 0 8px; }
+tr.past td { color: var(--muted); }
+.you { font-size: 11px; background: var(--text); color: var(--surface); border-radius: 4px; padding: 0 4px; margin-left: 4px; vertical-align: 1px; }
+.result { font-size: 20px; font-weight: 650; margin: 6px 0; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 1s linear infinite; display: inline-block; vertical-align: -3px; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+details summary { cursor: pointer; color: var(--text-2); }
+/* host */
+.host-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.sid { font-size: 14px; color: var(--text-2); }
+.sid b { font-size: 26px; letter-spacing: 4px; color: var(--text); }
+.qrs { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+.qr { text-align: center; }
+.qr .box { background: #fff; padding: 10px; border-radius: 10px; display: inline-block; }
+.qr .box svg { display: block; width: 240px; height: 240px; }
+.qr .cap { font-weight: 650; margin-top: 8px; font-size: 18px; }
+.qr .url { font-size: 12px; color: var(--muted); word-break: break-all; max-width: 280px; margin: 4px auto 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+.tile .k { font-size: 13px; color: var(--text-2); }
+.tile .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tile .g { font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.bar { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.legend { display: flex; gap: 16px; font-size: 14px; color: var(--text-2); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--text-2); font-size: 12px; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .hit { fill: transparent; cursor: default; }
+.chart .hit:hover { fill: var(--text); fill-opacity: .05; }
+.tip { position: fixed; pointer-events: none; background: var(--text); color: var(--surface); font-size: 13px; padding: 6px 9px; border-radius: 8px; z-index: 10; max-width: 260px; }
+.cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } .qr .box svg { width: 200px; height: 200px; } }
+.sessions td { font-size: 14px; }
+.sessions td.act { white-space: nowrap; }
+.sessions td.act .btn { padding: 5px 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand" id="brand"></span>
+  <span class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en">EN</button><button type="button" data-lang="pt">PT</button>
+  </span>
+</header>
+<main id="app"></main>
+<div id="banner" hidden></div>
+<div id="tip" class="tip" hidden></div>
+
+<script>/*! qrcode-generator 2.0.4 | (c) Kazuhiko Arase | MIT License | https://github.com/kazuhikoarase/qrcode-generator */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(o*r,n*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});</script>
+<script>
+"use strict";
+// =====================================================================
+//  CONFIGURATION — paste your Supabase project's URL and public key here
+//  (Supabase dashboard → Project Settings → API / API Keys). The public
+//  "publishable" or "anon" key is designed to sit in web pages; the
+//  database only lets it call the game's functions.
+// =====================================================================
+const CONFIG = {
+  SUPABASE_URL: "https://jekvafjjnnwelqnhjvtp.supabase.co",
+  SUPABASE_KEY: "sb_publishable_QMEDN0-UC4I3eLoqb7S1OA_TkfuVKav",
+};
+
+// ---------------------------------------------------------------------
+//  Text (English / Portuguese — Portugal)
+// ---------------------------------------------------------------------
+const TEXT = {
+  en: {
+    title: "Centipede game",
+    enter_code: "Session code", join: "Join", continue: "Continue", instructor: "Instructor",
+    privacy_title: "Before you join",
+    privacy: "This is a classroom game. No names or personal details are collected. Your choices are stored under a random ID (such as P7) and used only to discuss results in class. A random key is saved on this phone so you can reload the page.",
+    choose_group: "Which half of the room are you in? Your instructor will tell you.",
+    group_anon: "Anonymous group", group_anon_desc: "You play with a randomly chosen classmate. Neither of you knows who the other is.",
+    group_anon_desc_fixed: "You play with a randomly chosen classmate, the same one every round. Neither of you knows who the other is.",
+    group_known: "Deskmate pairs", group_known_desc: "You play with the person next to you, the same partner every round.",
+    pair_title: "Pair up with your deskmate", your_code: "Your code", partner_code_label: "Your deskmate's code",
+    pair_btn: "Pair", pair_hint: "Show your code to your deskmate. Only one of you needs to type the other's code.",
+    paired_with: "Paired with code {c}", unpair: "Undo pairing",
+    waiting_round: "Waiting for the instructor to start the next round…",
+    sit_out_odd: "Odd number of players: you sit out this round. You will play in the next one.",
+    sit_out_unpaired: "You were not paired when this round started. Pair up now to play in the next round.",
+    sit_out_partner: "Your partner was not connected when this round started. Wait for the next round.",
+    round_n: "Round {n}", you_are: "You are Player {r}",
+    partner_anon: "Partner: anonymous", partner_known: "Partner: your deskmate (code {c})",
+    your_turn: "Your decision", take: "TAKE", pass: "PASS",
+    take_desc: "You get {me}, your partner gets {other}. The game ends.",
+    pass_desc: "Both piles grow ×{m} and your partner decides.",
+    pass_desc_last: "The game ends: you get {me}, your partner gets {other}.",
+    waiting_partner: "Waiting for your partner's decision…",
+    result_taken_me: "You took at step {k}.", result_taken_partner: "Your partner took at step {k}.",
+    result_end: "Nobody took: the game ran to the end.", result_unfinished: "The round ended before your game finished.",
+    you_got: "You get {me} · your partner {other}",
+    history: "Your games", total: "Total", points: "points",
+    rules_title: "How the game works",
+    rules: "There are two piles of points, a large one and a small one. Players A and B take turns, starting with A, for up to {n} decisions. On your turn you can TAKE the large pile (your partner gets the small one and the game ends) or PASS (both piles grow ×{m} and it is your partner's turn).",
+    step: "Step", decides: "Decides", a_gets: "A gets", b_gets: "B gets", end: "End",
+    err_SESSION_NOT_FOUND: "Session not found. Check the code.",
+    err_CODE_NOT_FOUND: "No deskmate with that code. Check the number.",
+    err_CODE_TAKEN: "That person is already paired with someone else.",
+    err_ALREADY_PAIRED: "You are already paired.",
+    err_IN_GAME: "You cannot undo the pairing during a game.",
+    err_NOT_YOUR_TURN: "The game changed. Refreshing…", err_GAME_OVER: "This game is over.",
+    err_BAD_PIN: "Wrong PIN.", err_NOT_ENOUGH_PLAYERS: "Not enough connected players to form a pair.",
+    err_NOT_HOST: "This session no longer exists.", err_SESSION_FULL: "This session is full.",
+    err_BAD_PARAMS: "Check the game settings: the large pile must be bigger than the small one.",
+    err_BAD_GROUP: "Choose a group first.",
+    err_network: "Connection problem. Retrying…",
+    err_paused: "The server is not responding. Instructor: check that the Supabase project is not paused.",
+    err_config: "Setup needed: add your Supabase URL and key at the top of index.html.",
+    err_generic: "Something went wrong: {m}",
+    // instructor
+    new_session: "New session", pin: "Instructor PIN", label: "Class label (optional)", label_ph: "e.g. Economic Sociology, group 2",
+    session_lang: "Language for students", mode: "Pairing",
+    mode_split: "Half and half: anonymous half + deskmate half (two QR codes)",
+    mode_anon: "Everyone anonymous", mode_known: "Everyone with their deskmate (pair codes)",
+    anon_matching: "Anonymous matching", strangers: "New random partner each round", partners: "Same anonymous partner every round",
+    nodes: "Number of decisions", large0: "Large pile at start", small0: "Small pile at start", mult: "Growth per pass (×)",
+    create: "Create session", past: "Previous sessions", show: "Show", open: "Open", export_csv: "Export CSV",
+    export_all: "Export all sessions (CSV)", del: "Delete",
+    confirm_delete: "Permanently delete session {c} and all its results?",
+    session_id: "Session ID", qr_anon: "Anonymous half", qr_known: "Deskmate half", qr_all: "Scan to join",
+    or_go: "or open {url} and enter the code", hide_qr: "Hide QR codes", show_qr: "Show QR codes",
+    connected: "connected", joined: "joined", pairs_formed: "{n} deskmate pairs formed",
+    start_round: "Start round {n}", end_round: "End round {n}", games_done: "{d} of {t} games finished",
+    round_running: "Round {n} is running", round_closed: "Round {n} ended", no_round: "No round started yet",
+    results: "Results", all_rounds: "All rounds", show_live: "Include the round in progress",
+    chart_title: "Where games ended (share of each group's games)",
+    stat_games: "Games", stat_mean: "Average ending step", stat_first: "Taken at step 1", stat_end: "Reached the end",
+    prediction: "Backward induction predicts that A takes at step 1.",
+    no_results: "No finished games yet.", by_round: "By round", round: "Round", group: "Group",
+    leave: "Close dashboard", copy_link: "Copy dashboard link", copied: "Copied",
+    link_note: "Anyone with the dashboard link can control and delete this session. Keep it private.",
+    grp_anon: "Anonymous", grp_known: "Deskmates", settings: "Settings",
+    setting_line: "{n} decisions · piles {l} / {s} · ×{m} per pass",
+    created: "Created", players: "Players", rounds: "Rounds", games: "Games",
+    end_note: "“End” = nobody took; counted as step {n} in the average.",
+    hosting_note: "Students join at this page's address with the session code.",
+    // game types
+    game: "Game", game_classic: "Classic centipede", game_ledger: "Gift centipede: points + esteem (suggested and implemented by AI)",
+    game_discount: "Gift with discount (Egbert 2017, Fig. 3)", game_potlatch: "Potlatch (Egbert 2017, Fig. 2)",
+    about_game: "About this game", instructor_notes: "Notes for the instructor (not for the projector)", rules_players: "Rules as players see them",
+    intro_player_classic: "A game of taking or passing. Two piles of points, one large and one small, go back and forth between you and your partner, growing each time they are passed on.",
+    intro_player_discount: "A game of gifts and obligations, after Marcel Mauss's The Gift. A gift goes back and forth between you and your partner; each return may be worth a little less than the gift received. Keeping the gift breaks the obligation to reciprocate and costs you esteem.",
+    intro_player_potlatch: "A potlatch: a feast of competitive giving, after Marcel Mauss's The Gift. Each gift must be bigger than the one received. Keeping breaks the obligation and costs you esteem. Nobody knows when the feast will end.",
+    intro_player_ledger: "A centipede game with a ledger of esteem. The piles of points grow as in an ordinary centipede game, but taking the pile also costs you esteem, which goes to your partner. This variant was suggested and implemented by an AI.",
+    intro_host_classic: "The canonical centipede game (Rosenthal 1981), with the payoff structure of McKelvey & Palfrey (1992), scaled as in Egbert (2017, Fig. 1): piles of 4 and 1 that double at each pass (McKelvey & Palfrey ran 4- and 6-step versions); the player who would move after the last step gets the large pile. Points only. Backward induction predicts that A takes at step 1; in McKelvey & Palfrey's experiments only a small minority did.",
+    intro_host_discount: "Egbert, H. (2017) “The Gift and the Centipede”, Structure and Dynamics 10(1): 22–29, Fig. 3 (“Gift game with discount”). Mauss's obligations to give, accept and reciprocate are written into the payoffs, which are esteem rather than points: keeping at step k costs the keeper e − k + 1 and gives the partner the same, and full reciprocation ends at 0/0. Keeping is never better than giving, so score-maximisers give to the end; any keeping observed departs from the induced norm.",
+    intro_host_potlatch: "Egbert, H. (2017) “The Gift and the Centipede”, Structure and Dynamics 10(1): 22–29, Fig. 2 (“Potlatch game”). Each return must exceed the gift received, so the esteem at stake escalates: keeping at step k costs the keeper k and gives the partner k. Egbert's tree has no final step; here the feast ends at random after a gift, paying 0/0 (an implementation choice, not in the paper). Score-maximisers always give.",
+    intro_host_ledger: "Suggested and implemented by AI; not in Egbert (2017). It keeps the classic centipede's material piles and adds an esteem ledger: taking moves esteem equal to the pile taken from the taker to the partner, and score = points + λ × esteem. λ sets how binding the obligation is. With the default piles, backward induction predicts that A takes at step 1 for λ < 1/6, that B takes at the last step for 1/6 < λ < 1/2, and passing to the end for λ ≥ 1/2. Unlike Egbert's trees, the material dilemma survives.",
+    lambda: "Weight of esteem in the score (λ)", endow: "Gift value e (= number of steps)",
+    cont: "Chance the feast continues after each gift (%)",
+    keep: "KEEP", give: "GIVE", you_badge: "you", pts_short: "pts", est_short: "esteem",
+    a_score: "A score", b_score: "B score", a_esteem: "A esteem", b_esteem: "B esteem", feast_end: "Feast ends",
+    rules_classic: "There are two piles of points, a large one and a small one. Players A and B take turns, starting with A, for up to {n} decisions. On your turn you can TAKE the large pile (your partner gets the small one and the game ends) or PASS (both piles grow ×{m} and it is your partner's turn).",
+    rules_ledger: "The piles work as in the classic centipede: TAKE the large pile (the game ends) or PASS (both piles grow ×{m}), for up to {n} decisions. But taking breaks the obligation to give: the taker loses esteem equal to the pile taken, and the partner gains it. Your score = points + {l} × esteem. Esteem is ranked publicly by player ID.",
+    rules_discount: "Player A starts out holding a gift worth {e}. On your turn you GIVE it back (each return may be worth one less) or KEEP it. Keeping breaks the obligation to reciprocate: the keeper loses esteem equal to the gift's current value and the partner gains that much. If the gift is returned all the way down to zero, nobody loses face (0 / 0). Payoffs are esteem only, ranked publicly by player ID.",
+    rules_potlatch: "A feast of competitive giving. On your turn you GIVE (a bigger gift than you received) or KEEP. Keeping at step k means losing face: −k esteem for you, +k for your partner. After every gift the feast continues with probability {p}%; if it ends, nobody loses face (0 / 0). Payoffs are esteem only, ranked publicly by player ID.",
+    take_desc_ledger: "You get {mat} points but lose {mat} esteem (score {me}). Your partner gets {omat} points and gains {mat} esteem (score {other}). The game ends.",
+    keep_desc: "You keep and lose face: {me} esteem for you, {other} for your partner. The exchange ends.",
+    give_desc_discount: "You return the gift and your partner decides.",
+    give_last_discount: "The gift is fully reciprocated: nobody loses face (0 / 0).",
+    give_desc_potlatch: "You give a bigger gift. The feast continues with probability {p}%; if it ends, nobody loses face (0 / 0).",
+    result_kept_me: "You kept at step {k}.", result_kept_partner: "Your partner kept at step {k}.",
+    result_end_discount: "The gift was fully reciprocated: nobody lost face.",
+    result_end_potlatch: "The feast ended after {k} gifts with no one keeping: nobody lost face.",
+    you_got_ledger: "You: {mat} points, {est} esteem → score {pay}. Your partner's score: {opay}.",
+    you_got_est: "Your esteem {me} · your partner {other}",
+    esteem_rank: "Your esteem so far: {e} · rank {r} of {n}",
+    setting_ledger: "λ = {l}", setting_discount: "gift value e = {e}", setting_potlatch: "the feast continues with probability {p}%",
+    pred_take: "Backward induction (players who maximise their own score) predicts that {who} takes at step {k}.",
+    pred_keep: "Backward induction (players who maximise their own score) predicts that {who} keeps at step {k}.",
+    pred_end: "Backward induction (players who maximise their own score) predicts passing all the way to the end.",
+    pred_potlatch: "Keeping always costs esteem and giving never does, so a score-maximiser always gives.",
+    end_note_potlatch: "“Feast ended” = the feast ended with no one keeping.",
+    end_note_gift: "“End” = nobody kept; counted as step {n} in the average.",
+    stat_first_keep: "Kept at step 1", stat_end_discount: "Fully reciprocated", stat_end_potlatch: "Feast ended, no one kept",
+    ranking_title: "Esteem ranking", player: "Player", esteem: "Esteem", score: "Score",
+    hide_rank: "Hide ranking", show_rank: "Show ranking", rank_note: "Students see their own ID (P1, P2, …) on their phones.",
+  },
+  pt: {
+    title: "Jogo da centopeia",
+    enter_code: "Código da sessão", join: "Entrar", continue: "Continuar", instructor: "Docente",
+    privacy_title: "Antes de entrar",
+    privacy: "Este é um jogo de aula. Não é recolhido nenhum nome nem dado pessoal. As suas escolhas ficam guardadas com um identificador aleatório (por exemplo, P7) e servem apenas para discutir os resultados na aula. É guardada neste telemóvel uma chave aleatória para poder recarregar a página.",
+    choose_group: "Em que metade da sala está? O docente indica-lhe.",
+    group_anon: "Grupo anónimo", group_anon_desc: "Joga com um colega escolhido ao acaso. Nenhum dos dois sabe quem é o outro.",
+    group_anon_desc_fixed: "Joga com um colega escolhido ao acaso, sempre o mesmo em todas as rondas. Nenhum dos dois sabe quem é o outro.",
+    group_known: "Pares de colegas do lado", group_known_desc: "Joga com a pessoa ao seu lado, sempre o mesmo par em todas as rondas.",
+    pair_title: "Forme par com o colega do lado", your_code: "O seu código", partner_code_label: "Código do colega do lado",
+    pair_btn: "Formar par", pair_hint: "Mostre o seu código ao colega. Basta que um de vocês introduza o código do outro.",
+    paired_with: "Em par com o código {c}", unpair: "Desfazer par",
+    waiting_round: "À espera de que o docente inicie a próxima ronda…",
+    sit_out_odd: "Número ímpar de jogadores: fica de fora nesta ronda. Joga na próxima.",
+    sit_out_unpaired: "Não tinha par quando esta ronda começou. Forme par agora para jogar na próxima ronda.",
+    sit_out_partner: "O seu par não estava ligado quando esta ronda começou. Aguarde pela próxima ronda.",
+    round_n: "Ronda {n}", you_are: "É o Jogador {r}",
+    partner_anon: "Par: anónimo", partner_known: "Par: o colega do lado (código {c})",
+    your_turn: "A sua decisão", take: "FICAR", pass: "PASSAR",
+    take_desc: "Recebe {me} e o seu par recebe {other}. O jogo acaba.",
+    pass_desc: "As duas pilhas crescem ×{m} e a decisão passa para o seu par.",
+    pass_desc_last: "O jogo acaba: recebe {me} e o seu par recebe {other}.",
+    waiting_partner: "À espera da decisão do seu par…",
+    result_taken_me: "Ficou com a pilha no passo {k}.", result_taken_partner: "O seu par ficou com a pilha no passo {k}.",
+    result_end: "Ninguém ficou com a pilha: o jogo chegou ao fim.", result_unfinished: "A ronda terminou antes de o seu jogo acabar.",
+    you_got: "Recebe {me} · o seu par {other}",
+    history: "Os seus jogos", total: "Total", points: "pontos",
+    rules_title: "Como funciona o jogo",
+    rules: "Há duas pilhas de pontos, uma grande e uma pequena. Os Jogadores A e B decidem à vez, a começar pelo A, até {n} decisões. Na sua vez, pode FICAR com a pilha grande (o par recebe a pequena e o jogo acaba) ou PASSAR (as duas pilhas crescem ×{m} e a vez passa para o par).",
+    step: "Passo", decides: "Decide", a_gets: "A recebe", b_gets: "B recebe", end: "Fim",
+    err_SESSION_NOT_FOUND: "Sessão não encontrada. Verifique o código.",
+    err_CODE_NOT_FOUND: "Não existe nenhum colega com esse código. Verifique o número.",
+    err_CODE_TAKEN: "Essa pessoa já tem par.",
+    err_ALREADY_PAIRED: "Já tem par.",
+    err_IN_GAME: "Não pode desfazer o par durante um jogo.",
+    err_NOT_YOUR_TURN: "O jogo mudou. A atualizar…", err_GAME_OVER: "Este jogo já terminou.",
+    err_BAD_PIN: "PIN incorreto.", err_NOT_ENOUGH_PLAYERS: "Não há jogadores ligados suficientes para formar um par.",
+    err_NOT_HOST: "Esta sessão já não existe.", err_SESSION_FULL: "Esta sessão está cheia.",
+    err_BAD_PARAMS: "Verifique as definições: a pilha grande tem de ser maior do que a pequena.",
+    err_BAD_GROUP: "Escolha primeiro um grupo.",
+    err_network: "Problema de ligação. A tentar de novo…",
+    err_paused: "O servidor não responde. Docente: verifique se o projeto Supabase não está em pausa.",
+    err_config: "Configuração em falta: indique o URL e a chave do Supabase no início do index.html.",
+    err_generic: "Ocorreu um erro: {m}",
+    new_session: "Nova sessão", pin: "PIN de docente", label: "Nome da turma (opcional)", label_ph: "p. ex. Sociologia Económica, turma 2",
+    session_lang: "Língua para os estudantes", mode: "Emparelhamento",
+    mode_split: "Metade e metade: metade anónima + metade com o colega do lado (dois códigos QR)",
+    mode_anon: "Todos anónimos", mode_known: "Todos com o colega do lado (códigos de par)",
+    anon_matching: "Emparelhamento anónimo", strangers: "Novo par aleatório em cada ronda", partners: "O mesmo par anónimo em todas as rondas",
+    nodes: "Número de decisões", large0: "Pilha grande inicial", small0: "Pilha pequena inicial", mult: "Crescimento por passagem (×)",
+    create: "Criar sessão", past: "Sessões anteriores", show: "Mostrar", open: "Abrir", export_csv: "Exportar CSV",
+    export_all: "Exportar todas as sessões (CSV)", del: "Eliminar",
+    confirm_delete: "Eliminar definitivamente a sessão {c} e todos os resultados?",
+    session_id: "ID da sessão", qr_anon: "Metade anónima", qr_known: "Metade com colega do lado", qr_all: "Leia para entrar",
+    or_go: "ou abra {url} e introduza o código", hide_qr: "Esconder códigos QR", show_qr: "Mostrar códigos QR",
+    connected: "ligados", joined: "entraram", pairs_formed: "{n} pares de colegas formados",
+    start_round: "Iniciar ronda {n}", end_round: "Terminar ronda {n}", games_done: "{d} de {t} jogos terminados",
+    round_running: "Ronda {n} em curso", round_closed: "Ronda {n} terminada", no_round: "Ainda não começou nenhuma ronda",
+    results: "Resultados", all_rounds: "Todas as rondas", show_live: "Incluir a ronda em curso",
+    chart_title: "Onde terminaram os jogos (% dos jogos de cada grupo)",
+    stat_games: "Jogos", stat_mean: "Passo final médio", stat_first: "Ficou no passo 1", stat_end: "Chegou ao fim",
+    prediction: "A indução retroativa prevê que o A fique com a pilha no passo 1.",
+    no_results: "Ainda não há jogos terminados.", by_round: "Por ronda", round: "Ronda", group: "Grupo",
+    leave: "Fechar painel", copy_link: "Copiar ligação do painel", copied: "Copiado",
+    link_note: "Quem tiver a ligação do painel pode controlar e eliminar esta sessão. Mantenha-a privada.",
+    grp_anon: "Anónimos", grp_known: "Colegas do lado", settings: "Definições",
+    setting_line: "{n} decisões · pilhas {l} / {s} · ×{m} por passagem",
+    created: "Criada", players: "Jogadores", rounds: "Rondas", games: "Jogos",
+    end_note: "“Fim” = ninguém ficou com a pilha; conta como passo {n} na média.",
+    hosting_note: "Os estudantes entram neste endereço com o código da sessão.",
+    game: "Jogo", game_classic: "Centopeia clássica", game_ledger: "Centopeia da dádiva: pontos + estima (sugerida e implementada por IA)",
+    game_discount: "Dádiva com desconto (Egbert 2017, fig. 3)", game_potlatch: "Potlatch (Egbert 2017, fig. 2)",
+    about_game: "Sobre este jogo", instructor_notes: "Notas para o docente (não para o projetor)", rules_players: "Regras tal como os jogadores as veem",
+    intro_player_classic: "Um jogo de ficar ou passar. Duas pilhas de pontos, uma grande e uma pequena, vão e vêm entre si e o seu par, e crescem sempre que são passadas.",
+    intro_player_discount: "Um jogo de dádivas e obrigações, inspirado no Ensaio sobre a dádiva de Marcel Mauss. Uma dádiva vai e vem entre si e o seu par; cada retribuição pode valer um pouco menos do que a dádiva recebida. Guardar a dádiva quebra a obrigação de retribuir e custa-lhe estima.",
+    intro_player_potlatch: "Um potlatch: uma festa de dádivas competitivas, inspirada no Ensaio sobre a dádiva de Marcel Mauss. Cada dádiva tem de ser maior do que a recebida. Guardar quebra a obrigação e custa-lhe estima. Ninguém sabe quando a festa acaba.",
+    intro_player_ledger: "Uma centopeia com um registo de estima. As pilhas de pontos crescem como numa centopeia normal, mas ficar com a pilha também lhe custa estima, que passa para o seu par. Esta variante foi sugerida e implementada por uma IA.",
+    intro_host_classic: "A centopeia canónica (Rosenthal 1981), com a estrutura de ganhos de McKelvey & Palfrey (1992), à escala de Egbert (2017, fig. 1): pilhas de 4 e 1 que duplicam a cada passagem (McKelvey & Palfrey usaram versões de 4 e 6 passos); quem jogaria depois do último passo recebe a pilha grande. Só pontos. A indução retroativa prevê que o A fique com a pilha no passo 1; nas experiências de McKelvey & Palfrey, só uma pequena minoria o fez.",
+    intro_host_discount: "Egbert, H. (2017) “The Gift and the Centipede”, Structure and Dynamics 10(1): 22–29, fig. 3 (“Gift game with discount”). As obrigações de Mauss de dar, receber e retribuir estão inscritas nos ganhos, que são estima e não pontos: guardar no passo k custa e − k + 1 a quem guarda e dá o mesmo ao par, e a retribuição completa termina em 0/0. Guardar nunca é melhor do que dar, por isso quem maximiza a pontuação dá até ao fim; qualquer guarda observada desvia-se da norma induzida.",
+    intro_host_potlatch: "Egbert, H. (2017) “The Gift and the Centipede”, Structure and Dynamics 10(1): 22–29, fig. 2 (“Potlatch game”). Cada retribuição tem de exceder a dádiva recebida, por isso a estima em jogo aumenta: guardar no passo k custa k a quem guarda e dá k ao par. A árvore de Egbert não tem último passo; aqui a festa acaba ao acaso após uma dádiva, com 0/0 (uma opção de implementação, não do artigo). Quem maximiza a pontuação dá sempre.",
+    intro_host_ledger: "Sugerida e implementada por IA; não consta de Egbert (2017). Mantém as pilhas materiais da centopeia clássica e acrescenta um registo de estima: ficar com a pilha transfere estima igual à pilha de quem fica para o par, e pontuação = pontos + λ × estima. λ define quão vinculativa é a obrigação. Com as pilhas por omissão, a indução retroativa prevê que o A fique com a pilha no passo 1 se λ < 1/6, que o B fique no último passo se 1/6 < λ < 1/2, e passar até ao fim se λ ≥ 1/2. Ao contrário das árvores de Egbert, o dilema material mantém-se.",
+    lambda: "Peso da estima na pontuação (λ)", endow: "Valor da dádiva e (= número de passos)",
+    cont: "Probabilidade de a festa continuar após cada dádiva (%)",
+    keep: "GUARDAR", give: "DAR", you_badge: "você", pts_short: "pts", est_short: "estima",
+    a_score: "Pontuação A", b_score: "Pontuação B", a_esteem: "Estima A", b_esteem: "Estima B", feast_end: "Fim da festa",
+    rules_classic: "Há duas pilhas de pontos, uma grande e uma pequena. Os Jogadores A e B decidem à vez, a começar pelo A, até {n} decisões. Na sua vez, pode FICAR com a pilha grande (o par recebe a pequena e o jogo acaba) ou PASSAR (as duas pilhas crescem ×{m} e a vez passa para o par).",
+    rules_ledger: "As pilhas funcionam como na centopeia clássica: FICAR com a pilha grande (o jogo acaba) ou PASSAR (as duas pilhas crescem ×{m}), até {n} decisões. Mas ficar com a pilha quebra a obrigação de dar: quem fica perde estima igual à pilha que tirou, e o par ganha essa estima. A sua pontuação = pontos + {l} × estima. A estima é ordenada publicamente por identificador de jogador.",
+    rules_discount: "O Jogador A começa com uma dádiva no valor de {e}. Na sua vez, pode DAR (retribuir; cada retribuição pode valer menos um) ou GUARDAR. Guardar quebra a obrigação de retribuir: quem guarda perde estima igual ao valor atual da dádiva e o par ganha esse valor. Se a dádiva for retribuída até chegar a zero, ninguém perde a face (0 / 0). Só conta a estima, ordenada publicamente por identificador de jogador.",
+    rules_potlatch: "Uma festa de dádivas competitivas. Na sua vez, pode DAR (uma dádiva maior do que a que recebeu) ou GUARDAR. Guardar no passo k significa perder a face: −k de estima para si, +k para o par. Após cada dádiva, a festa continua com probabilidade de {p}%; se acabar, ninguém perde a face (0 / 0). Só conta a estima, ordenada publicamente por identificador de jogador.",
+    take_desc_ledger: "Recebe {mat} pontos mas perde {mat} de estima (pontuação {me}). O seu par recebe {omat} pontos e ganha {mat} de estima (pontuação {other}). O jogo acaba.",
+    keep_desc: "Guarda e perde a face: {me} de estima para si, {other} para o seu par. A troca acaba.",
+    give_desc_discount: "Retribui a dádiva e a decisão passa para o seu par.",
+    give_last_discount: "A dádiva fica totalmente retribuída: ninguém perde a face (0 / 0).",
+    give_desc_potlatch: "Dá uma dádiva maior. A festa continua com probabilidade de {p}%; se acabar, ninguém perde a face (0 / 0).",
+    result_kept_me: "Guardou no passo {k}.", result_kept_partner: "O seu par guardou no passo {k}.",
+    result_end_discount: "A dádiva foi totalmente retribuída: ninguém perdeu a face.",
+    result_end_potlatch: "A festa acabou após {k} dádivas sem ninguém guardar: ninguém perdeu a face.",
+    you_got_ledger: "Você: {mat} pontos, {est} de estima → pontuação {pay}. Pontuação do seu par: {opay}.",
+    you_got_est: "A sua estima {me} · o seu par {other}",
+    esteem_rank: "A sua estima até agora: {e} · posição {r} de {n}",
+    setting_ledger: "λ = {l}", setting_discount: "valor da dádiva e = {e}", setting_potlatch: "a festa continua com probabilidade de {p}%",
+    pred_take: "A indução retroativa (jogadores que maximizam a própria pontuação) prevê que {who} fique com a pilha no passo {k}.",
+    pred_keep: "A indução retroativa (jogadores que maximizam a própria pontuação) prevê que {who} guarde no passo {k}.",
+    pred_end: "A indução retroativa (jogadores que maximizam a própria pontuação) prevê passar até ao fim.",
+    pred_potlatch: "Guardar custa sempre estima e dar nunca custa, por isso quem maximiza a pontuação dá sempre.",
+    end_note_potlatch: "“Fim da festa” = a festa acabou sem ninguém guardar.",
+    end_note_gift: "“Fim” = ninguém guardou; conta como passo {n} na média.",
+    stat_first_keep: "Guardou no passo 1", stat_end_discount: "Totalmente retribuída", stat_end_potlatch: "Festa acabou sem ninguém guardar",
+    ranking_title: "Classificação de estima", player: "Jogador", esteem: "Estima", score: "Pontuação",
+    hide_rank: "Esconder classificação", show_rank: "Mostrar classificação", rank_note: "Os estudantes veem o próprio identificador (P1, P2, …) no telemóvel.",
+  },
+};
+
+// ---------------------------------------------------------------------
+//  Small helpers
+// ---------------------------------------------------------------------
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const params = new URLSearchParams(location.search);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+let lang = params.get("lang") || store.get("cg_lang") || ((navigator.language || "").toLowerCase().startsWith("pt") ? "pt" : "en");
+let langChosen = !!(params.get("lang") || store.get("cg_lang"));
+if (!TEXT[lang]) lang = "en";
+function t(key, vars) {
+  let s = (TEXT[lang] && TEXT[lang][key]) ?? TEXT.en[key] ?? key;
+  if (vars) for (const k in vars) s = s.split("{" + k + "}").join(vars[k]);
+  return s;
+}
+function fmt(x) {
+  const n = Number(x);
+  return n.toLocaleString(lang === "pt" ? "pt-PT" : "en-GB", { maximumFractionDigits: 2 });
+}
+let rerender = () => {};
+function setLang(l, explicit) {
+  if (!TEXT[l]) return;
+  lang = l;
+  if (explicit) { langChosen = true; store.set("cg_lang", l); }
+  document.documentElement.lang = l;
+  document.title = t("title");
+  $("#brand").textContent = t("title");
+  document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === l)));
+  rerender();
+}
+document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang, true)));
+
+// Payoffs — mirrors cg_payoffs in the database. Outcome when a game stops at step k.
+// took = true: the player deciding at k (A at odd k) took/kept; took = false: nobody took
+// (k = nodes + 1 for fixed-length games; any k for an ended potlatch feast).
+// Returns [A, B] arrays of material points, esteem and score.
+function outcome(s, k, took) {
+  const r2 = x => Math.round(x * 100) / 100;
+  const mover = k % 2 === 1 ? 0 : 1, o = { mat: [0, 0], est: [0, 0], pay: [0, 0] };
+  if (s.game === "classic" || s.game === "ledger") {
+    const L = r2(s.large0 * Math.pow(s.mult, k - 1)), S = r2(s.small0 * Math.pow(s.mult, k - 1));
+    o.mat[mover] = L; o.mat[1 - mover] = S;
+    if (took && s.game === "ledger") { o.est[mover] = -L; o.est[1 - mover] = L; }
+  } else if (took) {
+    const v = s.game === "discount" ? s.nodes - k + 1 : k;
+    o.est[mover] = -v; o.est[1 - mover] = v;
+  }
+  const w = s.game === "classic" ? 0 : s.game === "ledger" ? Number(s.lambda) : 1;
+  o.pay = [r2(o.mat[0] + w * o.est[0]), r2(o.mat[1] + w * o.est[1])];
+  return o;
+}
+const isGift = s => s.game === "discount" || s.game === "potlatch";
+function rulesText(S) {
+  return t("rules_" + S.game, { n: S.nodes, m: fmt(S.mult), l: fmt(S.lambda), e: S.nodes, p: Math.round(S.cont_prob * 100) });
+}
+const fmtS = x => { const n = Number(x); return n > 0 ? "+" + fmt(n) : n < 0 ? "−" + fmt(-n) : "0"; };
+// Backward induction for players who maximise their own score (ties: pass/give).
+function predict(s) {
+  if (s.game === "potlatch") return t("pred_potlatch");
+  const N = s.nodes;
+  let v = outcome(s, N + 1, false).pay, stop = N + 1;
+  for (let k = N; k >= 1; k--) {
+    const tk = outcome(s, k, true).pay, mv = k % 2 === 1 ? 0 : 1;
+    if (tk[mv] > v[mv]) { v = tk; stop = k; }
+  }
+  if (stop > N) return t("pred_end");
+  return t(isGift(s) ? "pred_keep" : "pred_take", { who: stop % 2 ? "A" : "B", k: stop });
+}
+
+// ---------------------------------------------------------------------
+//  Backend calls (Supabase REST "rpc" endpoint — no external libraries)
+// ---------------------------------------------------------------------
+const configured = /^https:\/\//.test(CONFIG.SUPABASE_URL) && !CONFIG.SUPABASE_URL.includes("YOUR-PROJECT") && !CONFIG.SUPABASE_KEY.startsWith("YOUR-");
+class ApiError extends Error { constructor(code, msg) { super(msg || code); this.code = code; } }
+let netFails = 0;
+async function rpc(fn, args = {}) {
+  if (!configured) throw new ApiError("CONFIG");
+  const headers = { "Content-Type": "application/json", apikey: CONFIG.SUPABASE_KEY };
+  if (CONFIG.SUPABASE_KEY.startsWith("eyJ")) headers.Authorization = "Bearer " + CONFIG.SUPABASE_KEY; // legacy anon JWT
+  let res;
+  try {
+    res = await fetch(CONFIG.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, { method: "POST", headers, body: JSON.stringify(args) });
+  } catch (e) {
+    netFails++; showBanner(); throw new ApiError("NETWORK");
+  }
+  const text = await res.text();
+  let data = null; try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!res.ok) {
+    if (res.status >= 500 || res.status === 0) { netFails++; showBanner(); throw new ApiError("NETWORK"); }
+    netFails = 0; showBanner();
+    const msg = (data && (data.message || data.hint)) || res.statusText;
+    throw new ApiError(/^[A-Z_]+$/.test(msg) ? msg : "OTHER", msg);
+  }
+  netFails = 0; showBanner();
+  return data;
+}
+function showBanner() {
+  const b = $("#banner");
+  if (netFails === 0) { b.hidden = true; return; }
+  b.hidden = false;
+  b.textContent = netFails >= 5 ? t("err_paused") : t("err_network");
+}
+function errText(e) {
+  if (e.code === "CONFIG") return t("err_config");
+  if (e.code === "NETWORK") return t("err_network");
+  if (TEXT.en["err_" + e.code]) return t("err_" + e.code);
+  return t("err_generic", { m: esc(e.message) });
+}
+
+// A simple poller that pauses while the tab is hidden and resumes immediately when shown.
+function makePoller(fn, intervalFn) {
+  let timer = null, stopped = false, running = false;
+  async function tick() {
+    if (stopped || running) return;
+    running = true;
+    try { await fn(); } catch (e) { /* errors are shown by fn or the banner */ }
+    running = false;
+    if (!stopped) timer = setTimeout(tick, document.hidden ? 15000 : intervalFn());
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !stopped) { clearTimeout(timer); tick(); } });
+  tick();
+  return { stop() { stopped = true; clearTimeout(timer); }, now() { clearTimeout(timer); tick(); } };
+}
+
+const app = $("#app");
+
+// ---------------------------------------------------------------------
+//  Router
+// ---------------------------------------------------------------------
+function route() {
+  const m = location.hash.match(/^#host(?:=([0-9a-f-]{36}))?/i);
+  if (m) {
+    if (m[1]) { store.set("cg_host", m[1]); history.replaceState(null, "", location.pathname + location.search + "#host"); }
+    return hostView();
+  }
+  const code = (params.get("s") || "").trim().toUpperCase();
+  if (code) return studentView(code);
+  landing();
+}
+
+function baseUrl() { return location.origin + location.pathname; }
+
+// ---------------------------------------------------------------------
+//  Landing page
+// ---------------------------------------------------------------------
+function landing() {
+  app.className = "";
+  rerender = () => {
+    app.innerHTML = `
+      <div class="card">
+        <h1>${t("title")}</h1>
+        ${configured ? "" : `<div class="err">${t("err_config")}</div>`}
+        <label for="code">${t("enter_code")}</label>
+        <input id="code" class="code" maxlength="4" autocomplete="off" autocapitalize="characters" inputmode="text">
+        <button class="btn primary block" id="go">${t("continue")}</button>
+      </div>
+      <p class="muted" style="text-align:center"><a href="#host" id="hostlink">${t("instructor")}</a></p>`;
+    const go = () => {
+      const c = $("#code").value.trim().toUpperCase();
+      if (c.length === 4) location.search = "?s=" + encodeURIComponent(c) + (langChosen ? "&lang=" + lang : "");
+    };
+    $("#go").onclick = go;
+    $("#code").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    $("#hostlink").onclick = e => { e.preventDefault(); location.hash = "#host"; route(); };
+  };
+  setLang(lang);
+}
+
+// ---------------------------------------------------------------------
+//  Student view
+// ---------------------------------------------------------------------
+function studentView(code) {
+  app.className = "";
+  const tokKey = "cg_tok_" + code;
+  let token = store.get(tokKey);
+  let peek = null, state = null, lastJson = "", msg = "", busy = false, poller = null;
+
+  async function start() {
+    if (token) return startPolling();
+    try {
+      peek = await rpc("cg_peek", { p_code: code });
+      if (!langChosen && peek.lang) setLang(peek.lang); else rerender();
+    } catch (e) { msg = errText(e); rerender(); }
+  }
+
+  async function join(grp) {
+    if (busy) return; busy = true; msg = "";
+    try {
+      const r = await rpc("cg_join", { p_code: code, p_grp: grp || null });
+      token = r.token; store.set(tokKey, token);
+      startPolling();
+    } catch (e) { msg = errText(e); rerender(); }
+    busy = false;
+  }
+
+  function startPolling() {
+    if (poller) poller.stop();
+    poller = makePoller(async () => {
+      try {
+        const s = await rpc("cg_state", { p_token: token });
+        if (!langChosen && s.session.lang && s.session.lang !== lang && !state) setLang(s.session.lang);
+        const j = JSON.stringify(s);
+        state = s;
+        if (j !== lastJson) { lastJson = j; rerender(); }
+      } catch (e) {
+        if (e.code === "NOT_JOINED") { store.del(tokKey); token = null; state = null; poller.stop(); poller = null; start(); }
+      }
+    }, () => (state && state.match && state.match.status === "playing") ? 1500 : 2500);
+  }
+
+  async function act(fn, args) {
+    if (busy) return; busy = true; msg = "";
+    document.querySelectorAll("#app button").forEach(b => b.disabled = true);
+    try {
+      const s = await rpc(fn, Object.assign({ p_token: token }, args));
+      state = s; lastJson = JSON.stringify(s);
+    } catch (e) { msg = errText(e); }
+    busy = false; rerender();
+    if (poller) poller.now();
+  }
+
+  function joinScreen() {
+    if (!peek) return `<div class="card"><h1>${t("title")}</h1>${msg ? `<div class="err">${msg}</div>` : `<p><span class="spinner"></span></p>`}
+      <p class="muted"><a href="${esc(baseUrl())}">← ${t("enter_code")}</a></p></div>`;
+    const g = params.get("g");
+    const anonDesc = t("group_anon_desc");
+    let groupPart = "";
+    if (peek.mode === "split" && !["anon", "known"].includes(g)) {
+      groupPart = `<p>${t("choose_group")}</p>
+        <button class="choice" data-join="anon"><strong>${t("group_anon")}</strong><span class="muted">${anonDesc}</span></button>
+        <button class="choice" data-join="known"><strong>${t("group_known")}</strong><span class="muted">${t("group_known_desc")}</span></button>`;
+    } else {
+      const grp = peek.mode === "split" ? g : peek.mode;
+      groupPart = `<p><strong>${t(grp === "anon" ? "group_anon" : "group_known")}</strong><br>
+        <span class="muted">${grp === "anon" ? anonDesc : t("group_known_desc")}</span></p>
+        <button class="btn primary block" data-join="${grp}">${t("join")}</button>`;
+    }
+    return `<div class="card">
+        <h1>${t("title")}</h1>
+        ${peek.label ? `<p class="muted">${esc(peek.label)}</p>` : ""}
+        ${peek.game ? `<div class="about"><p><strong>${t("game_" + peek.game)}</strong></p><p class="small">${t("intro_player_" + peek.game)}</p></div>` : ""}
+        <h3>${t("privacy_title")}</h3>
+        <p class="small">${t("privacy")}</p>
+        ${msg ? `<div class="err">${msg}</div>` : ""}
+        ${groupPart}
+      </div>`;
+  }
+
+  function gameTable(s, m) {
+    const S = s.session, g = S.game, N = S.nodes;
+    const cur = m ? (m.status === "playing" ? m.node : m.stop_node) : null;
+    const ended = !!(m && m.status === "end");
+    const last = g === "potlatch" ? Math.max(4, (cur || 1) + 2) : N;
+    const you = r => (m && m.role === r) ? `<span class="you">${t("you_badge")}</span>` : "";
+    const cell = (o, i) => {
+      if (g === "classic") return fmt(o.mat[i]);
+      if (g === "ledger") return `<strong>${fmt(o.pay[i])}</strong><div class="sub">${fmt(o.mat[i])} ${t("pts_short")} · ${fmtS(o.est[i])}</div>`;
+      return fmtS(o.est[i]);
+    };
+    let rows = "";
+    for (let k = 1; k <= last; k++) {
+      const o = outcome(S, k, true);
+      const cls = cur && k === cur && !ended ? "now" : (cur && k < cur ? "past" : "");
+      rows += `<tr class="${cls}"><td>${k}</td><td>${k % 2 ? "A" : "B"}</td><td>${cell(o, 0)}</td><td>${cell(o, 1)}</td></tr>`;
+    }
+    if (g === "potlatch") rows += `<tr><td>…</td><td></td><td></td><td></td></tr>`;
+    const endO = outcome(S, g === "potlatch" ? 1 : N + 1, false);
+    rows += `<tr class="${ended ? "now" : ""}"><td>${t(g === "potlatch" ? "feast_end" : "end")}</td><td>—</td><td>${cell(endO, 0)}</td><td>${cell(endO, 1)}</td></tr>`;
+    const head = g === "classic" ? ["a_gets", "b_gets"] : g === "ledger" ? ["a_score", "b_score"] : ["a_esteem", "b_esteem"];
+    return `<table><thead><tr><th>${t("step")}</th><th>${t("decides")}</th><th>${t(head[0])}${you(1)}</th><th>${t(head[1])}${you(2)}</th></tr></thead><tbody>${rows}</tbody></table>
+      ${g === "ledger" ? `<p class="muted small" style="margin-top:6px">${t("score")} = ${t("pts_short")} + ${fmt(S.lambda)} × ${t("est_short")}</p>` : ""}`;
+  }
+
+  function rulesBlock(s, open, withTable = true) {
+    return `<details style="margin-top:12px"${open ? " open" : ""}><summary>${t("rules_title")}</summary>
+      <p class="small" style="margin-top:8px"><strong>${t("game_" + s.session.game)}</strong></p>
+      <p class="small">${t("intro_player_" + s.session.game)}</p>
+      <p class="small">${rulesText(s.session)}</p>
+      ${withTable ? gameTable(s, null) : ""}</details>`;
+  }
+
+  function historyBlock(s) {
+    const g = s.session.game, me = s.me;
+    const rankLine = g !== "classic" && me.rank ? `<p class="small" style="margin-top:10px"><strong>${t("esteem_rank", { e: fmtS(me.est_total), r: me.rank, n: me.ranked })}</strong></p>` : "";
+    if (!s.history.length) return rankLine ? `<div class="card">${rankLine}</div>` : "";
+    const val = h => g === "classic" ? `${fmt(h.pay)} ${t("points")}` : g === "ledger" ? `${fmt(h.pay)} <span class="muted small">(${fmt(h.mat)} ${t("pts_short")} · ${fmtS(h.est)})</span>` : `${fmtS(h.est)} ${t("est_short")}`;
+    const total = s.history.reduce((a, h) => a + Number(isGift(s.session) ? h.est : h.pay), 0);
+    const totTxt = g === "classic" ? `${fmt(total)} ${t("points")}` : isGift(s.session) ? `${fmtS(total)} ${t("est_short")}` : `${fmt(total)}`;
+    return `<div class="card"><h3>${t("history")}</h3><table><tbody>
+      ${s.history.map(h => `<tr><td>${t("round_n", { n: h.round })}</td><td>${val(h)}</td></tr>`).join("")}
+      <tr><td><strong>${t("total")}</strong></td><td><strong>${totTxt}</strong></td></tr></tbody></table>${rankLine}</div>`;
+  }
+
+  function pairingBlock(s) {
+    const me = s.me;
+    if (me.partner_code) {
+      const canUndo = !(s.match && s.match.status === "playing");
+      return `<div class="row" style="justify-content:space-between"><span class="pill">✓ ${t("paired_with", { c: me.partner_code })}</span>
+        ${canUndo ? `<button class="btn" id="unpair" style="padding:6px 12px;font-size:14px">${t("unpair")}</button>` : ""}</div>`;
+    }
+    return `<h2>${t("pair_title")}</h2>
+      <div class="muted" style="text-align:center">${t("your_code")}</div>
+      <div class="big-code">${me.pair_code}</div>
+      <label for="pc">${t("partner_code_label")}</label>
+      <input id="pc" class="code" inputmode="numeric" maxlength="3" autocomplete="off">
+      <button class="btn primary block" id="dopair">${t("pair_btn")}</button>
+      <p class="muted small" style="margin-top:10px">${t("pair_hint")}</p>`;
+  }
+
+  function playScreen(s) {
+    const m = s.match, me = s.me, S = s.session, g = S.game, N = S.nodes;
+    const I = m.role - 1, O = 1 - I, gift = isGift(S);
+    const roleL = m.role === 1 ? "A" : "B";
+    const partner = me.grp === "known" ? t("partner_known", { c: me.partner_code ?? "?" }) : t("partner_anon");
+    const stepLbl = g === "potlatch" ? `${t("step")} ${m.node}` : `${t("step")} ${m.node}/${N}`;
+    let body = "";
+    if (m.status === "playing") {
+      const myTurn = (m.node % 2 === 1) === (m.role === 1);
+      if (myTurn) {
+        const now = outcome(S, m.node, true);
+        const lastFixed = g !== "potlatch" && m.node >= N;
+        const endO = outcome(S, N + 1, false);
+        let takeTxt, passTxt;
+        if (g === "classic") takeTxt = t("take_desc", { me: fmt(now.mat[I]), other: fmt(now.mat[O]) });
+        else if (g === "ledger") takeTxt = t("take_desc_ledger", { mat: fmt(now.mat[I]), me: fmt(now.pay[I]), omat: fmt(now.mat[O]), other: fmt(now.pay[O]) });
+        else takeTxt = t("keep_desc", { me: fmtS(now.est[I]), other: fmtS(now.est[O]) });
+        if (g === "potlatch") passTxt = t("give_desc_potlatch", { p: Math.round(S.cont_prob * 100) });
+        else if (lastFixed) passTxt = g === "discount" ? t("give_last_discount") : t("pass_desc_last", { me: fmt(endO.pay[I]), other: fmt(endO.pay[O]) });
+        else passTxt = g === "discount" ? t("give_desc_discount") : t("pass_desc", { m: fmt(S.mult) });
+        body = `<h2>${t("your_turn")} · ${stepLbl}</h2>
+          <div class="decide">
+            <button class="t" data-move="take"><strong>${t(gift ? "keep" : "take")}</strong>${takeTxt}</button>
+            <button class="p" data-move="pass"><strong>${t(gift ? "give" : "pass")}</strong>${passTxt}</button>
+          </div>`;
+      } else {
+        body = `<h2>${stepLbl}</h2><p><span class="spinner"></span>${t("waiting_partner")}</p>`;
+      }
+    } else {
+      let line;
+      if (m.status === "taken") {
+        const mine = m.taker === m.role;
+        line = t((gift ? "result_kept_" : "result_taken_") + (mine ? "me" : "partner"), { k: m.stop_node });
+      } else if (m.status === "end") {
+        line = g === "discount" ? t("result_end_discount") : g === "potlatch" ? t("result_end_potlatch", { k: m.stop_node - 1 }) : t("result_end");
+      } else line = t("result_unfinished");
+      let pay = "";
+      if (m.status !== "unfinished") {
+        if (g === "classic") pay = t("you_got", { me: fmt(m.my_pay) + " " + t("points"), other: fmt(m.partner_pay) });
+        else if (g === "ledger") pay = t("you_got_ledger", { mat: fmt(m.my_mat), est: fmtS(m.my_est), pay: fmt(m.my_pay), opay: fmt(m.partner_pay) });
+        else pay = t("you_got_est", { me: fmtS(m.my_est), other: fmtS(m.partner_est) });
+      }
+      body = `<p class="result">${line}</p>${pay ? `<p>${pay}</p>` : ""}
+        <p class="muted"><span class="spinner"></span>${t("waiting_round")}</p>`;
+    }
+    return `<div class="card">
+        <div class="status"><span class="pill">${t("round_n", { n: s.round.no })}</span><span class="pill">P${me.seq}</span><span><strong>${t("you_are", { r: roleL })}</strong></span><span>${partner}</span></div>
+        <p class="muted small" style="margin:-4px 0 8px">${t("game_" + g)}</p>
+        ${msg ? `<div class="err">${msg}</div>` : ""}
+        ${body}
+        <div style="margin-top:14px">${gameTable(s, m)}</div>
+        ${rulesBlock(s, false, false)}
+      </div>`;
+  }
+
+  function waitScreen(s) {
+    const me = s.me;
+    let note = t("waiting_round");
+    const roundLive = s.round && s.round.status === "playing";
+    if (roundLive) {
+      if (me.grp === "anon") note = t("sit_out_odd");
+      else if (!me.partner_code) note = t("sit_out_unpaired");
+      else note = t("sit_out_partner");
+    }
+    return `<div class="card">
+        ${me.grp === "known" ? pairingBlock(s) + `<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">` : ""}
+        ${msg ? `<div class="err">${msg}</div>` : ""}
+        <p><span class="spinner"></span>${note}</p>
+        <p class="muted small">${t(me.grp === "anon" ? "group_anon" : "group_known")} · P${me.seq}</p>
+        ${rulesBlock(s, !s.history.length)}
+      </div>`;
+  }
+
+  rerender = () => {
+    if (!token || !state) { app.innerHTML = joinScreen(); }
+    else {
+      const s = state;
+      app.innerHTML = (s.match ? playScreen(s) : waitScreen(s)) + historyBlock(s);
+    }
+    app.querySelectorAll("[data-join]").forEach(b => b.onclick = () => join(b.dataset.join));
+    app.querySelectorAll("[data-move]").forEach(b => b.onclick = () => act("cg_move", { p_match: state.match.id, p_action: b.dataset.move }));
+    const dp = $("#dopair");
+    if (dp) {
+      const doit = () => { const v = parseInt($("#pc").value, 10); if (v >= 100 && v <= 999) act("cg_pair", { p_code: v }); };
+      dp.onclick = doit; $("#pc").addEventListener("keydown", e => { if (e.key === "Enter") doit(); });
+    }
+    const up = $("#unpair"); if (up) up.onclick = () => act("cg_unpair", {});
+  };
+  setLang(lang);
+  start();
+}
+
+// ---------------------------------------------------------------------
+//  Instructor view
+// ---------------------------------------------------------------------
+function hostView() {
+  app.className = "wide";
+  let hostToken = store.get("cg_host");
+  let hs = null, msg = "", poller = null, busy = false;
+  let showQr = true, roundFilter = "all", includeLive = false, sessions = null, pinCache = sessionStorage.getItem("cg_pin") || "";
+  let qrHtml = "", qrKey = "", lastHs = "", byRoundOpen = false, showRank = true, notesOpen = false;
+
+  function stopPoll() { if (poller) { poller.stop(); poller = null; } }
+
+  // ---------- setup screen ----------
+  function setupScreen() {
+    const opt = (v, k, sel) => `<option value="${v}"${sel ? " selected" : ""}>${t(k)}</option>`;
+    return `
+      <div class="cols">
+        <div class="card">
+          <h1>${t("new_session")}</h1>
+          ${configured ? "" : `<div class="err">${t("err_config")}</div>`}
+          ${msg ? `<div class="err">${msg}</div>` : ""}
+          <label for="f_pin">${t("pin")}</label><input id="f_pin" type="password" value="${esc(pinCache)}" autocomplete="current-password">
+          <label for="f_label">${t("label")}</label><input id="f_label" maxlength="80" placeholder="${esc(t("label_ph"))}">
+          <label for="f_lang">${t("session_lang")}</label>
+          <select id="f_lang"><option value="en"${lang === "en" ? " selected" : ""}>English</option><option value="pt"${lang === "pt" ? " selected" : ""}>Português</option></select>
+          <label for="f_mode">${t("mode")}</label>
+          <select id="f_mode">${opt("split", "mode_split", true)}${opt("anon", "mode_anon")}${opt("known", "mode_known")}</select>
+          <div id="anonm"><label for="f_am">${t("anon_matching")}</label>
+            <select id="f_am">${opt("strangers", "strangers", true)}${opt("partners", "partners")}</select></div>
+          <label for="f_game">${t("game")}</label>
+          <select id="f_game">${opt("classic", "game_classic", true)}${opt("discount", "game_discount")}${opt("potlatch", "game_potlatch")}${opt("ledger", "game_ledger")}</select>
+          <div class="about small" id="f_about"></div>
+          <div data-for="classic ledger"><label for="f_nodes">${t("nodes")}</label>
+            <select id="f_nodes">${[4, 6, 8, 10].map(n => `<option${n === 6 ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+          <div data-for="discount"><label for="f_e">${t("endow")}</label>
+            <select id="f_e">${[4, 6, 8, 10, 12].map(n => `<option${n === 10 ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+          <div data-for="ledger"><label for="f_lambda">${t("lambda")}</label><input id="f_lambda" type="number" min="0" max="10" step="any" value="0.3"></div>
+          <div data-for="potlatch"><label for="f_cont">${t("cont")}</label><input id="f_cont" type="number" min="5" max="98" step="1" value="80"></div>
+          <div class="grid2" data-for="classic ledger" style="grid-template-columns:1fr 1fr 1fr">
+            <div><label for="f_l">${t("large0")}</label><input id="f_l" type="number" min="0.01" step="any" value="4"></div>
+            <div><label for="f_s">${t("small0")}</label><input id="f_s" type="number" min="0" step="any" value="1"></div>
+            <div><label for="f_m">${t("mult")}</label><input id="f_m" type="number" min="1" step="any" value="2"></div>
+          </div>
+          <p class="muted small" id="f_pred" style="margin-top:8px"></p>
+          <button class="btn primary block" id="create">${t("create")}</button>
+        </div>
+        <div class="card">
+          <h2>${t("past")}</h2>
+          <div class="row"><button class="btn" id="loadpast">${t("show")}</button><button class="btn" id="expall">${t("export_all")}</button></div>
+          <div id="pastlist" style="margin-top:12px">${sessions ? sessionsTable() : ""}</div>
+          <p class="muted small" style="margin-top:12px">${t("pin")} ↑</p>
+        </div>
+      </div>`;
+  }
+
+  function sessionsTable() {
+    if (!sessions.length) return `<p class="muted">—</p>`;
+    return `<table class="sessions"><thead><tr><th>${t("session_id")}</th><th>${t("created")}</th><th>${t("players")}</th><th>${t("games")}</th><th></th></tr></thead><tbody>
+      ${sessions.map(s => `<tr><td><strong>${esc(s.code)}</strong><br><span class="muted">${esc(s.label || "")}${s.game ? (s.label ? " · " : "") + t("game_" + s.game) : ""}</span></td>
+        <td style="white-space:nowrap">${esc(String(s.created_at).slice(0, 10))}</td><td>${s.players}</td><td>${s.games}</td>
+        <td class="act"><button class="btn" data-open="${s.host_token}">${t("open")}</button>
+          <button class="btn" data-exp="${s.host_token}" data-code="${esc(s.code)}" data-label="${esc(s.label || "")}">CSV</button>
+          <button class="btn danger" data-del="${s.host_token}" data-code="${esc(s.code)}">${t("del")}</button></td></tr>`).join("")}
+      </tbody></table>`;
+  }
+
+  function wireSetup() {
+    const modeSel = $("#f_mode"), am = $("#anonm");
+    const syncMode = () => { am.style.display = modeSel.value === "known" ? "none" : ""; };
+    modeSel.onchange = syncMode; syncMode();
+    const gameSel = $("#f_game");
+    const draft = () => {
+      const g = gameSel.value;
+      return { game: g, nodes: g === "discount" ? +$("#f_e").value : +$("#f_nodes").value,
+               large0: +$("#f_l").value, small0: +$("#f_s").value, mult: +$("#f_m").value,
+               lambda: +$("#f_lambda").value, cont_prob: (+$("#f_cont").value) / 100 };
+    };
+    const syncGame = () => {
+      const d = draft();
+      app.querySelectorAll("[data-for]").forEach(el => el.classList.toggle("hidden", !el.dataset.for.split(" ").includes(d.game)));
+      const ok = d.large0 > d.small0 && d.mult >= 1 && d.lambda >= 0;
+      $("#f_about").innerHTML = `<p>${t("intro_host_" + d.game)}</p>
+        <p><strong>${t("rules_players")}:</strong> ${t("intro_player_" + d.game)} ${rulesText(d)}</p>`;
+      $("#f_pred").textContent = ok ? predict(d) : "";
+    };
+    gameSel.onchange = syncGame;
+    ["f_nodes", "f_e", "f_l", "f_s", "f_m", "f_lambda", "f_cont"].forEach(id => $("#" + id).addEventListener("input", syncGame));
+    syncGame();
+    const readPin = () => { pinCache = $("#f_pin").value; sessionStorage.setItem("cg_pin", pinCache); return pinCache; };
+    $("#create").onclick = async () => {
+      if (busy) return; busy = true; msg = "";
+      try {
+        const r = await rpc("cg_create_session", {
+          p_pin: readPin(), p_label: $("#f_label").value, p_nodes: draft().nodes,
+          p_large: +$("#f_l").value, p_small: +$("#f_s").value, p_mult: +$("#f_m").value,
+          p_anon_matching: $("#f_am").value, p_lang: $("#f_lang").value, p_mode: modeSel.value,
+          p_game: gameSel.value, p_lambda: +$("#f_lambda").value, p_cont: (+$("#f_cont").value) / 100,
+        });
+        hostToken = r.host_token; store.set("cg_host", hostToken);
+        busy = false; return startDashboard();
+      } catch (e) { msg = errText(e); }
+      busy = false; rerender();
+    };
+    $("#loadpast").onclick = async () => {
+      try { sessions = await rpc("cg_list_sessions", { p_pin: readPin() }); msg = ""; }
+      catch (e) { msg = errText(e); }
+      rerender();
+    };
+    $("#expall").onclick = async () => {
+      try { downloadCsv(await rpc("cg_export", { p_pin: readPin() }), "centipede_all_sessions"); }
+      catch (e) { msg = errText(e); rerender(); }
+    };
+    app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { hostToken = b.dataset.open; store.set("cg_host", hostToken); startDashboard(); });
+    app.querySelectorAll("[data-exp]").forEach(b => b.onclick = async () => {
+      try { downloadCsv(await rpc("cg_export", { p_host: b.dataset.exp }), fileBase(b.dataset.code, b.dataset.label)); }
+      catch (e) { msg = errText(e); rerender(); }
+    });
+    app.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+      if (!confirm(t("confirm_delete", { c: b.dataset.code }))) return;
+      try {
+        await rpc("cg_host_delete", { p_host: b.dataset.del });
+        if (store.get("cg_host") === b.dataset.del) store.del("cg_host");
+        sessions = await rpc("cg_list_sessions", { p_pin: readPin() });
+      } catch (e) { msg = errText(e); }
+      rerender();
+    });
+  }
+
+  // ---------- dashboard ----------
+  function startDashboard() {
+    stopPoll(); hs = null; qrKey = ""; lastHs = ""; roundFilter = "all";
+    poller = makePoller(async () => {
+      try {
+        const s = await rpc("cg_host_state", { p_host: hostToken });
+        const j = JSON.stringify(s);
+        if (j !== lastHs) { lastHs = j; hs = s; rerender(); }
+      } catch (e) {
+        if (e.code === "NOT_HOST") { store.del("cg_host"); hostToken = null; stopPoll(); msg = errText(e); rerender(); }
+      }
+    }, () => 3000);
+    rerender();
+  }
+
+  function joinUrl(grp) {
+    const u = new URL(baseUrl());
+    u.searchParams.set("s", hs.session.code);
+    if (grp) u.searchParams.set("g", grp);
+    u.searchParams.set("lang", hs.session.lang);
+    return u.toString();
+  }
+  function qrSvg(text) {
+    const q = qrcode(0, "M"); q.addData(text); q.make();
+    return q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+  }
+  function buildQrs() {
+    const s = hs.session;
+    const key = s.code + s.mode + lang;
+    if (key === qrKey) return qrHtml;
+    const items = s.mode === "split" ? [["anon", t("qr_anon")], ["known", t("qr_known")]] : [[null, t("qr_all")]];
+    qrHtml = `<div class="qrs">${items.map(([g, cap]) => {
+      const url = joinUrl(g);
+      return `<div class="qr"><div class="box">${qrSvg(url)}</div><div class="cap">${cap}</div><div class="url">${esc(url)}</div></div>`;
+    }).join("")}</div>
+    <p class="muted small" style="text-align:center;margin-top:10px">${t("or_go", { url: `<strong>${esc(baseUrl())}</strong>` })}: <strong>${esc(s.code)}</strong></p>`;
+    qrKey = key;
+    return qrHtml;
+  }
+
+  // Categories 1..M are the step at which someone took/kept; M+1 = nobody did ("End").
+  function aggregate(rows, M) {
+    const out = {};
+    for (const g of ["anon", "known"]) {
+      const r = rows.filter(x => x.grp === g);
+      const counts = Array(M + 2).fill(0);
+      r.forEach(x => counts[x.status === "end" ? M + 1 : Math.min(x.stop, M)]++);
+      const n = r.length;
+      out[g] = {
+        n, counts,
+        mean: n ? r.reduce((a, x) => a + x.stop, 0) / n : null,
+        first: n ? counts[1] / n : null,
+        end: n ? counts[M + 1] / n : null,
+      };
+    }
+    return out;
+  }
+  function stepsShown() {
+    const S = hs.session;
+    if (S.game !== "potlatch") return S.nodes;
+    return Math.max(4, ...hs.results.filter(r => r.status === "taken").map(r => r.stop));
+  }
+  const endLabel = () => t(hs.session.game === "potlatch" ? "feast_end" : "end");
+  const pct = x => x == null ? "—" : Math.round(x * 100) + "%";
+
+  function groupsInSession() {
+    const m = hs.session.mode;
+    return m === "split" ? ["anon", "known"] : [m];
+  }
+  const COLOR = { anon: "var(--series-1)", known: "var(--series-2)" };
+
+  function chartSvg(agg, groups, N) { // N = number of step categories before "End"
+    const W = 640, H = 250, ml = 40, mr = 8, mt = 10, mb = 30;
+    const pw = W - ml - mr, ph = H - mt - mb;
+    const cats = N + 1;
+    let maxP = 0;
+    groups.forEach(g => { const a = agg[g]; if (a.n) for (let k = 1; k <= cats; k++) maxP = Math.max(maxP, a.counts[k] / a.n); });
+    const tick = maxP <= 0.5 ? 0.1 : 0.25;
+    const top = Math.max(tick * 2, Math.ceil(maxP / tick - 1e-9) * tick), nT = Math.round(top / tick);
+    const y = v => mt + ph - (v / top) * ph;
+    const band = pw / cats, inner = band * 0.72, gap = 2;
+    const bw = (inner - gap * (groups.length - 1)) / groups.length;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("chart_title"))}">`;
+    for (let i = 0; i <= nT; i++) {
+      const v = tick * i, yy = y(v);
+      s += `<line class="grid" x1="${ml}" x2="${W - mr}" y1="${yy}" y2="${yy}"/><text x="${ml - 6}" y="${yy + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`;
+    }
+    for (let k = 1; k <= cats; k++) {
+      const x0 = ml + (k - 1) * band + (band - inner) / 2;
+      groups.forEach((g, gi) => {
+        const a = agg[g]; if (!a.n) return;
+        const v = a.counts[k] / a.n; if (v <= 0) return;
+        const x = x0 + gi * (bw + gap), yy = y(v), h = mt + ph - yy, r = Math.min(4, bw / 2, h);
+        s += `<path fill="${COLOR[g]}" d="M${x},${mt + ph} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${mt + ph} Z"/>`;
+      });
+      const tipTxt = groups.map(g => `${t("grp_" + g)}: ${agg[g].counts[k]}/${agg[g].n} (${agg[g].n ? Math.round(agg[g].counts[k] / agg[g].n * 100) : 0}%)`).join(" · ");
+      s += `<rect class="hit" x="${ml + (k - 1) * band}" y="${mt}" width="${band}" height="${ph}" data-tip="${esc((k <= N ? t("step") + " " + k : endLabel()) + " — " + tipTxt)}"/>`;
+      s += `<text x="${ml + (k - 0.5) * band}" y="${H - 10}" text-anchor="middle">${k <= N ? k : esc(endLabel())}</text>`;
+    }
+    s += `<line x1="${ml}" x2="${W - mr}" y1="${mt + ph}" y2="${mt + ph}" stroke="var(--text-2)" stroke-width="1"/>`;
+    return s + `</svg>`;
+  }
+
+  function resultsBlock() {
+    const S = hs.session, N = stepsShown(), groups = groupsInSession(), gift = isGift(S);
+    const firstK = gift ? "stat_first_keep" : "stat_first";
+    const endK = S.game === "discount" ? "stat_end_discount" : S.game === "potlatch" ? "stat_end_potlatch" : "stat_end";
+    const live = hs.round && hs.round.status === "playing" ? hs.round.no : null;
+    let rows = hs.results.filter(r => includeLive || r.round !== live);
+    const roundsAvail = [...new Set(hs.results.map(r => r.round))].sort((a, b) => a - b);
+    if (roundFilter !== "all") rows = rows.filter(r => r.round === +roundFilter);
+    const agg = aggregate(rows, N);
+    const filterUi = `<div class="row" style="margin-bottom:10px">
+        <select id="rf" style="width:auto">${[`<option value="all">${t("all_rounds")}</option>`, ...roundsAvail.map(r => `<option value="${r}"${String(r) === String(roundFilter) ? " selected" : ""}>${t("round_n", { n: r })}</option>`)].join("")}</select>
+        ${live ? `<label class="row" style="margin:0;gap:6px"><input type="checkbox" id="live" style="width:auto"${includeLive ? " checked" : ""}>${t("show_live")}</label>` : ""}
+      </div>`;
+    if (!rows.length) return `<div class="card"><h2>${t("results")}</h2>${filterUi}<p class="muted">${t("no_results")}</p></div>`;
+    const tiles = groups.map(g => {
+      const a = agg[g];
+      const sw = groups.length > 1 ? `<span class="sw" style="background:${COLOR[g]}"></span>${t("grp_" + g)}` : t("grp_" + g);
+      return `<div class="tile"><div class="g">${sw}</div><div class="k">${t("stat_games")}</div><div class="v">${a.n}</div></div>
+        <div class="tile"><div class="g">${sw}</div><div class="k">${t("stat_mean")}</div><div class="v">${a.mean == null ? "—" : fmt(Math.round(a.mean * 10) / 10)}</div></div>
+        <div class="tile"><div class="g">${sw}</div><div class="k">${t(firstK)}</div><div class="v">${pct(a.first)}</div></div>
+        <div class="tile"><div class="g">${sw}</div><div class="k">${t(endK)}</div><div class="v">${pct(a.end)}</div></div>`;
+    }).join("");
+    const legend = groups.length > 1 ? `<div class="legend">${groups.map(g => `<span><span class="sw" style="background:${COLOR[g]}"></span>${t("grp_" + g)} (n=${agg[g].n})</span>`).join("")}</div>` : "";
+    // by-round table (all finished games, regardless of filter)
+    const byRound = roundsAvail.filter(r => includeLive || r !== live).map(r => {
+      const a = aggregate(hs.results.filter(x => x.round === r), N);
+      return groups.map(g => a[g].n ? `<tr><td>${r}</td><td>${t("grp_" + g)}</td><td>${a[g].n}</td><td>${fmt(Math.round(a[g].mean * 10) / 10)}</td><td>${pct(a[g].first)}</td><td>${pct(a[g].end)}</td></tr>` : "").join("");
+    }).join("");
+    return `<div class="card">
+        <h2>${t("results")}</h2>${filterUi}
+        <div class="tiles" style="grid-template-columns:repeat(${Math.min(4 * groups.length, 4)},1fr)">${tiles}</div>
+        <h3 style="margin-top:16px">${t("chart_title")}</h3>${legend}
+        <div class="chart">${chartSvg(agg, groups, N)}</div>
+        <p class="muted small">${predict(S)} ${S.game === "potlatch" ? t("end_note_potlatch") : t(S.game === "discount" ? "end_note_gift" : "end_note", { n: N + 1 })}</p>
+        <details id="byround" style="margin-top:8px"${byRoundOpen ? " open" : ""}><summary>${t("by_round")}</summary>
+          <table style="margin-top:8px"><thead><tr><th>${t("round")}</th><th>${t("group")}</th><th>${t("stat_games")}</th><th>${t("stat_mean")}</th><th>${t(firstK)}</th><th>${t(endK)}</th></tr></thead><tbody>${byRound}</tbody></table>
+        </details>
+      </div>`;
+  }
+
+  function rankingBlock() {
+    if (!hs.ranking) return "";
+    const R = hs.ranking, groups = groupsInSession(), ledger = hs.session.game === "ledger";
+    const btn = `<button class="btn" id="togglerank" style="padding:5px 12px;font-size:14px">${t(showRank ? "hide_rank" : "show_rank")}</button>`;
+    const head = `<div class="row" style="justify-content:space-between"><h2 style="margin:0">${t("ranking_title")}</h2>${btn}</div>`;
+    if (!showRank) return `<div class="card">${head}</div>`;
+    if (!R.length) return `<div class="card">${head}<p class="muted" style="margin-top:10px">${t("no_results")}</p></div>`;
+    const ranked = R.map(r => ({ ...r, rank: 1 + R.filter(q => Number(q.est) > Number(r.est)).length }));
+    const shown = ranked.length > 13 ? [...ranked.slice(0, 10), null, ...ranked.slice(-3)] : ranked;
+    const sw = g => groups.length > 1 ? `<span class="sw" style="background:${COLOR[g]};margin-right:6px"></span>` : "";
+    const rows = shown.map(r => r === null ? `<tr><td colspan="${ledger ? 5 : 4}" class="muted">…</td></tr>` :
+      `<tr><td>${r.rank}</td><td>${sw(r.grp)}P${r.seq}</td><td>${fmtS(r.est)}</td>${ledger ? `<td>${fmt(r.score)}</td>` : ""}<td>${r.games}</td></tr>`).join("");
+    return `<div class="card">${head}
+      <table style="margin-top:10px"><thead><tr><th>#</th><th>${t("player")}</th><th>${t("esteem")}</th>${ledger ? `<th>${t("score")}</th>` : ""}<th>${t("games")}</th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="muted small" style="margin-top:8px">${t("rank_note")}</p></div>`;
+  }
+
+  function controlBlock() {
+    const r = hs.round, p = hs.players, groups = groupsInSession();
+    const nextNo = r ? (r.status === "playing" ? r.no : r.no + 1) : 1;
+    const prog = (d, tot) => `<div class="bar"><i style="width:${tot ? Math.round(d / tot * 100) : 0}%"></i></div>`;
+    const players = groups.map(g => `<div class="tile"><div class="g">${groups.length > 1 ? `<span class="sw" style="background:${COLOR[g]}"></span>` : ""}${t("grp_" + g)}</div>
+        <div class="v">${p[g + "_active"]}</div><div class="k">${t("connected")} · ${p[g]} ${t("joined")}${g === "known" ? "<br>" + t("pairs_formed", { n: p.pairs }) : ""}</div></div>`).join("");
+    let roundInfo = `<p class="muted">${t("no_round")}</p>`;
+    if (r) {
+      const gm = r.games;
+      roundInfo = `<p><strong>${t(r.status === "playing" ? "round_running" : "round_closed", { n: r.no })}</strong></p>` +
+        groups.map(g => gm[g + "_total"] ? `<div class="small" style="margin-top:6px">${t("grp_" + g)}: ${t("games_done", { d: gm[g + "_done"], t: gm[g + "_total"] })}${prog(gm[g + "_done"], gm[g + "_total"])}</div>` : "").join("");
+    }
+    return `<div class="card">
+        <div class="tiles">${players}</div>
+        <div style="margin-top:14px">${roundInfo}</div>
+        ${msg ? `<div class="err">${msg}</div>` : ""}
+        <div class="row" style="margin-top:12px">
+          ${r && r.status === "playing"
+            ? `<button class="btn" id="endr">${t("end_round", { n: r.no })}</button><button class="btn primary" id="startr">${t("start_round", { n: nextNo + 1 })}</button>`
+            : `<button class="btn primary" id="startr">${t("start_round", { n: nextNo })}</button>`}
+        </div>
+      </div>`;
+  }
+
+  function dashboard() {
+    if (!hs) return `<div class="card"><span class="spinner"></span></div>`;
+    const s = hs.session;
+    return `
+      <div class="card">
+        <div class="host-head">
+          <div><h1>${esc(s.label || t("title"))}</h1>
+            <div class="sid">${t("session_id")}: <b>${esc(s.code)}</b> · ${esc(String(s.created_at).slice(0, 10))}</div>
+            <div class="muted small">${t(s.mode === "split" ? "mode_split" : s.mode === "anon" ? "mode_anon" : "mode_known")}${s.mode !== "known" ? " · " + t(s.anon_matching) : ""}<br>
+            <strong>${t("game_" + s.game)}</strong> · ${s.game === "discount" ? t("setting_discount", { e: s.nodes })
+              : s.game === "potlatch" ? t("setting_potlatch", { p: Math.round(s.cont_prob * 100) })
+              : t("setting_line", { n: s.nodes, l: fmt(s.large0), s: fmt(s.small0), m: fmt(s.mult) }) + (s.game === "ledger" ? " · " + t("setting_ledger", { l: fmt(s.lambda) }) : "")}</div></div>
+          <div class="row">
+            <button class="btn" id="toggleqr">${t(showQr ? "hide_qr" : "show_qr")}</button>
+            <button class="btn" id="csv">${t("export_csv")}</button>
+            <button class="btn" id="copylink">${t("copy_link")}</button>
+            <button class="btn" id="leave">${t("leave")}</button>
+            <button class="btn danger" id="delete">${t("del")}</button>
+          </div>
+        </div>
+        ${showQr ? `<div style="margin-top:16px">${buildQrs()}</div>` : ""}
+      </div>
+      <div class="card about">
+        <h2>${t("about_game")}: ${t("game_" + s.game)}</h2>
+        <p>${t("intro_player_" + s.game)}</p>
+        <p class="small">${rulesText(s)}</p>
+        <details id="notes"${notesOpen ? " open" : ""}><summary>${t("instructor_notes")}</summary>
+          <p class="small" style="margin-top:8px">${t("intro_host_" + s.game)}</p>
+          <p class="small">${predict(s)}</p></details>
+      </div>
+      <div class="cols">
+        <div>${controlBlock()}${rankingBlock()}</div>
+        <div>${resultsBlock()}</div>
+      </div>`;
+  }
+
+  function fileBase(code, label) {
+    const safe = String(label || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+    return "centipede_" + code + (safe ? "_" + safe : "");
+  }
+  function downloadCsv(rows, base) {
+    const sep = lang === "pt" ? ";" : ",";
+    const cols = ["session_id", "session_label", "session_date", "game", "pairing_mode", "anon_matching", "nodes", "large0", "small0", "mult",
+                  "lambda", "cont_prob", "round", "grp", "player_a", "player_b", "outcome", "stop_node", "taken_by",
+                  "points_a", "points_b", "esteem_a", "esteem_b", "score_a", "score_b"];
+    const cell = v => {
+      if (v == null) return "";
+      let s = String(v);
+      if (lang === "pt" && typeof v === "number") s = s.replace(".", ",");
+      return /[";,\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const csv = "﻿" + [cols.join(sep), ...rows.map(r => cols.map(c => cell(r[c])).join(sep))].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = base + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  function wireDashboard() {
+    if (!hs) return;
+    const on = (id, fn) => { const el = $("#" + id); if (el) el.onclick = fn; };
+    on("toggleqr", () => { showQr = !showQr; rerender(); });
+    on("togglerank", () => { showRank = !showRank; rerender(); });
+    on("leave", () => { stopPoll(); store.del("cg_host"); hostToken = null; hs = null; rerender(); });
+    on("copylink", async () => {
+      const link = baseUrl() + "#host=" + hostToken;
+      try { await navigator.clipboard.writeText(link); $("#copylink").textContent = t("copied"); }
+      catch { prompt(t("copy_link"), link); }
+      setTimeout(() => { const b = $("#copylink"); if (b) b.textContent = t("copy_link"); }, 1500);
+      msg = "";
+    });
+    on("csv", async () => {
+      try { downloadCsv(await rpc("cg_export", { p_host: hostToken }), fileBase(hs.session.code, hs.session.label)); }
+      catch (e) { msg = errText(e); rerender(); }
+    });
+    on("delete", async () => {
+      if (!confirm(t("confirm_delete", { c: hs.session.code }))) return;
+      try { await rpc("cg_host_delete", { p_host: hostToken }); } catch (e) {}
+      stopPoll(); store.del("cg_host"); hostToken = null; hs = null; rerender();
+    });
+    const run = fn => async () => {
+      if (busy) return; busy = true; msg = "";
+      try { hs = await rpc(fn, { p_host: hostToken }); } catch (e) { msg = errText(e); }
+      busy = false; rerender();
+    };
+    on("startr", run("cg_host_start_round"));
+    on("endr", run("cg_host_end_round"));
+    const rf = $("#rf"); if (rf) rf.onchange = () => { roundFilter = rf.value; rerender(); };
+    const br = $("#byround"); if (br) br.ontoggle = () => { byRoundOpen = br.open; };
+    const nt = $("#notes"); if (nt) nt.ontoggle = () => { notesOpen = nt.open; };
+    const lv = $("#live"); if (lv) lv.onchange = () => { includeLive = lv.checked; rerender(); };
+    // chart tooltips
+    const tip = $("#tip");
+    app.querySelectorAll(".hit").forEach(h => {
+      h.addEventListener("mousemove", e => { tip.hidden = false; tip.textContent = h.dataset.tip; tip.style.left = (e.clientX + 12) + "px"; tip.style.top = (e.clientY + 12) + "px"; });
+      h.addEventListener("mouseleave", () => { tip.hidden = true; });
+    });
+  }
+
+  rerender = () => {
+    $("#tip").hidden = true;
+    if (hostToken) { app.innerHTML = dashboard(); wireDashboard(); }
+    else { app.innerHTML = setupScreen(); wireSetup(); }
+  };
+  setLang(lang);
+  if (hostToken) startDashboard();
+}
+
+route();
+</script>
+</body>
+</html>
